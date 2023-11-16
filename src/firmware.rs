@@ -202,6 +202,24 @@ impl FirmwareBundleInfo {
                         info.bit_table_structure.replace(bit);
                     }
                     RegionStructure::DeviceControlBlock(dcb) => {
+                        if dcb.header.gpio_assignment_table_pointer > 0 {
+                            legacy_image_reader.seek(SeekFrom::Start(
+                                dcb.header.gpio_assignment_table_pointer as u64,
+                            ))?;
+                            let gpio_assignment_table =
+                                legacy_image_reader.read_le::<GpioAssignmentTable>()?;
+                            info.gpio_assignment_table.replace(gpio_assignment_table);
+                        }
+
+                        if dcb.header.i2c_devices_table_pointer > 0 {
+                            legacy_image_reader.seek(SeekFrom::Start(
+                                dcb.header.i2c_devices_table_pointer as u64,
+                            ))?;
+                            let i2c_devices_table =
+                                legacy_image_reader.read_le::<I2cDevicesTable>()?;
+                            info.i2c_devices_table.replace(i2c_devices_table);
+                        }
+
                         info.device_control_block.replace(dcb);
                     }
                 }

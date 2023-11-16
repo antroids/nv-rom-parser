@@ -456,8 +456,15 @@ pub struct I2cDevicesTableHeader {
 
 #[bitfield]
 #[derive(BinRead, Debug, Clone, Serialize)]
+//#[br(map = |value: u32| Self::from_bytes(value.to_be_bytes()))]
 pub struct I2cDevicesTableEntry {
     pub device_type: I2cDevicesTableEntryDeviceType,
+    pub i2c_address: u8,
+    pub reserved_0: B4,
+    pub external_communications_port: B1,
+    pub write_access_privilege_level: B3,
+    pub read_access_privilege_level: B3,
+    pub reserved_1: B5,
 }
 
 #[derive(Debug, Clone, BitfieldSpecifier, Serialize)]
@@ -482,6 +489,8 @@ pub enum I2cDevicesTableEntryDeviceType {
     Vt1165 = 0x42,
     ChiL8203_8212_8213_8214 = 0x43,
     Ncp4208 = 0x44,
+
+    SkipEntry = 0xFF,
 }
 
 #[derive(BinRead, Debug, Clone, Serialize)]
