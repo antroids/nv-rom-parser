@@ -2,10 +2,11 @@
 
 use crate::cursor::ContinuousRegionReader;
 use crate::nvidia::bit::nvlink::NvLinkConfigData;
-use crate::nvidia::bit::{
-    BITStructure, BITTokenType, PllInfo, PowerPolicyTable, StringToken, VirtualPStateTable20,
+use crate::nvidia::bit::perf::{MemoryClockTable, PowerPolicyTable, VirtualPStateTable20};
+use crate::nvidia::bit::{BITStructure, BITTokenType, PllInfo, StringToken};
+use crate::nvidia::dcb::{
+    ConnectorTable, DeviceControlBlock, GpioAssignmentTable, I2cDevicesTable,
 };
-use crate::nvidia::dcb::{DeviceControlBlock, GpioAssignmentTable, I2cDevicesTable};
 use crate::nvidia::nbsi::NbsiPciExpansionRom;
 use crate::nvidia::{NvgiRegion, NvidiaPciExpansionRom, RfrdRegion};
 use crate::pci_efi::EfiPciExpansionRom;
@@ -42,6 +43,7 @@ pub struct LegacyPciImageInfo {
     pub bit_tokens_data: Vec<BITTokenType>,
     pub bit_string_token: Option<StringToken>,
     pub nvlink_config_data: Option<NvLinkConfigData>,
+    pub memory_clock_table: Option<MemoryClockTable>,
     pub pll_info: Option<PllInfo>,
     pub power_policy_table: Option<PowerPolicyTable>,
     pub virtual_p_state_table: Option<VirtualPStateTable20>,
@@ -50,6 +52,7 @@ pub struct LegacyPciImageInfo {
     pub device_control_block: Option<DeviceControlBlock>,
     pub gpio_assignment_table: Option<GpioAssignmentTable>,
     pub i2c_devices_table: Option<I2cDevicesTable>,
+    pub connector_table: Option<ConnectorTable>,
 }
 
 impl FirmwareBundleInfo {
@@ -68,10 +71,12 @@ impl FirmwareBundleInfo {
                         bit_tokens_data: vec![],
                         bit_string_token: None,
                         nvlink_config_data: None,
+                        memory_clock_table: None,
                         pll_info: None,
                         device_control_block: None,
                         gpio_assignment_table: None,
                         i2c_devices_table: None,
+                        connector_table: None,
                         power_policy_table: None,
                         virtual_p_state_table: None,
                     });
@@ -157,7 +162,7 @@ impl FirmwareBundleInfo {
             let structures: Vec<RegionStructure> =
                 RegionStructureIterator::new(&mut legacy_image_reader).collect();
 
-            for structure in structures {
+            'structures_iteration: for structure in structures {
                 match structure {
                     RegionStructure::BiosInformationTable(bit) => {
                         for token in &bit.tokens {
@@ -179,6 +184,10 @@ impl FirmwareBundleInfo {
                                     info.pll_info.replace(pll_token);
                                 }
                                 Ok(BITTokenType::Perf(ptrs)) => {
+                                    let memory_clock_table = legacy_image_reader
+                                        .read_le_args::<MemoryClockTable>((ptrs.clone(),))?;
+                                    info.memory_clock_table.replace(memory_clock_table);
+
                                     let virtual_p_state_table = legacy_image_reader
                                         .read_le_args::<VirtualPStateTable20>(
                                         (ptrs.clone(),),
@@ -220,7 +229,17 @@ impl FirmwareBundleInfo {
                             info.i2c_devices_table.replace(i2c_devices_table);
                         }
 
+                        if dcb.header.connector_table_pointer > 0 {
+                            legacy_image_reader
+                                .seek(SeekFrom::Start(dcb.header.connector_table_pointer as u64))?;
+                            let connector_table =
+                                legacy_image_reader.read_le::<ConnectorTable>()?;
+                            info.connector_table.replace(connector_table);
+                        }
+
                         info.device_control_block.replace(dcb);
+
+                        break 'structures_iteration; // last parsed structure
                     }
                 }
             }

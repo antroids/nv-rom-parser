@@ -500,3 +500,122 @@ bitflags! {
         const DisableDeviceProbing = 0b10000000;
     }
 }
+
+// https://nvidia.github.io/open-gpu-doc/DCB/DCB-4.x-Specification.html#_connector_table
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct ConnectorTable {
+    pub header: ConnectorTableHeader,
+    #[br(count(header.entry_count))]
+    pub entries: Vec<ConnectorTableEntry>,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct ConnectorTableHeader {
+    pub version: u8,
+    #[br(assert(header_size >= 5))]
+    pub header_size: u8,
+    pub entry_count: u8,
+    #[br(assert(entry_size == 4))]
+    pub entry_size: u8,
+    pub platform: ConnectorTablePlatform,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct ConnectorTableEntry {
+    pub connector_type: ConnectorType,
+
+    pub location: B4,
+    pub hotplug_a_interrupt: bool,
+    pub hotplug_b_interrupt: bool,
+    pub dp_a: bool,
+    pub dp_b: bool,
+
+    pub hotplug_c_interrupt: bool,
+    pub hotplug_d_interrupt: bool,
+    pub dp_c: bool,
+    pub dp_d: bool,
+    pub di_a: bool,
+    pub di_b: bool,
+    pub di_c: bool,
+    pub di_d: bool,
+
+    pub hotplug_e_interrupt: bool,
+    pub hotplug_f_interrupt: bool,
+    pub hotplug_g_interrupt: bool,
+    pub self_refresh_a: bool,
+    pub lcd_interrupt_gpio_pin: B3,
+    pub reserved: B1,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+#[br(repr = u8)]
+#[repr(u8)]
+pub enum ConnectorTablePlatform {
+    NormalAddInCard = 0x00,
+    TwoBackPlateAddInCards = 0x01,
+    AddInCardConfigurable = 0x02,
+    DesktopWithIntegratedFullDp = 0x07,
+    MobileAddInCard = 0x08,
+    MxmModule = 0x09,
+    MobileSystemWithAllDisplaysOnTheBackOfTheSystem = 0x10,
+    MobileSystemWithDisplayConnectorsOnTheBackAndLeftOfTheSystem = 0x11,
+    MobileSystemWithExtraConnectorsOnTheDock = 0x18,
+    CrushNormalBackPlateDesign = 0x20,
+}
+
+#[derive(BinRead, Debug, Clone, BitfieldSpecifier, Serialize)]
+#[br(repr = u8)]
+#[repr(u8)]
+#[bits = 8]
+pub enum ConnectorType {
+    Vga15Pin = 0x00,
+    DviA = 0x01,
+    PodVga15Pin = 0x02,
+    TvCompositeOut = 0x10,
+    TvSVideoOut = 0x11,
+    TvSVideoBreakoutComposite = 0x12,
+    TvHdtvComponentYPrPb = 0x13,
+    TvScart = 0x14,
+    TvCompositeScartOverBlue = 0x16,
+    TvHdtvEiaj4120 = 0x17,
+    PodHdtvYPrPb = 0x18,
+    PodSVideo = 0x19,
+    PodComposite = 0x1A,
+    DviITvSVideo = 0x20,
+    DviITvComposite = 0x21,
+    DviITvSVideoBreakoutComposite = 0x22,
+    DviI = 0x30,
+    DviD = 0x31,
+    AppleDisplayConnector = 0x32,
+    LfhDviI1 = 0x38,
+    LfhDviI2 = 0x39,
+    Bnc = 0x3C,
+    LvdsSpwgAttached = 0x40,
+    LvdsOemAttached = 0x41,
+    LvdsSpwgDetached = 0x42,
+    LvdsOemDetached = 0x43,
+    TmdsOemAttached = 0x45,
+    DisplayPortExternalConnector = 0x46,
+    DisplayPortInternalConnector = 0x47,
+    DisplayPortMiniExternalConnector = 0x48,
+    Vga15PinIfNotDocked = 0x50,
+    Vga15PinIfDocked = 0x51,
+    DviIIfNotDocked = 0x52,
+    DviIIfDocked = 0x53,
+    DviDIfNotDocked = 0x54,
+    DviDIfDocked = 0x55,
+    DisplayPortExternalIfNotDocked = 0x56,
+    DisplayPortExternalIfDocked = 0x57,
+    DisplayPortMiniExternalIfNotDocked = 0x58,
+    DisplayPortMiniExternalIfDocked = 0x59,
+    ThreePinDinStereoConnector = 0x60,
+    HdmiAConnector = 0x61,
+    AudioSpdifConnector = 0x62,
+    HdmiCMiniConnector = 0x63,
+    LfhDp1 = 0x64,
+    LfhDp2 = 0x65,
+    VirtualConnectorForWifiDisplay = 0x70,
+
+    SkipEntry = 0xFF,
+}
