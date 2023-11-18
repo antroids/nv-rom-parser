@@ -619,3 +619,48 @@ pub enum ConnectorType {
 
     SkipEntry = 0xFF,
 }
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct CommunicationsControlBlock {
+    #[br(restore_position)]
+    pub header: CommunicationsControlBlockHeader,
+    #[br(count(header.entry_count))]
+    #[br(seek_before = binread::io::SeekFrom::Current(header.header_size as i64))]
+    pub entries: Vec<CommunicationsControlBlockEntry>,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct CommunicationsControlBlockHeader {
+    #[br(assert(version == 0x41))]
+    pub version: u8,
+    pub header_size: u8,
+    pub entry_count: u8,
+    #[br(assert(entry_size == 4))]
+    pub entry_size: u8,
+    #[br(restore_position)]
+    pub primary_communication_port: u8,
+    pub secondary_communication_port: u8,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct CommunicationsControlBlockEntry {
+    pub i2c_port: B5,
+    pub dp_aux_port: B5,
+    pub reserved: B18,
+    pub i2c_port_speed: CommunicationsControlBlockI2cPortSpeed,
+}
+
+#[derive(Debug, Clone, BitfieldSpecifier, Serialize)]
+#[bits = 4]
+pub enum CommunicationsControlBlockI2cPortSpeed {
+    Default,
+    Standard100kHz,
+    Speed200kHz,
+    Fast400kHz,
+    Speed800kHz,
+    Speed1600kHz,
+    HighSpeed3400kHz,
+    Speed60kHz,
+    Speed300kHz,
+}

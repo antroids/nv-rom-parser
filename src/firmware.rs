@@ -5,7 +5,8 @@ use crate::nvidia::bit::nvlink::NvLinkConfigData;
 use crate::nvidia::bit::perf::{MemoryClockTable, PowerPolicyTable, VirtualPStateTable20};
 use crate::nvidia::bit::{BITStructure, BITTokenType, PllInfo, StringToken};
 use crate::nvidia::dcb::{
-    ConnectorTable, DeviceControlBlock, GpioAssignmentTable, I2cDevicesTable,
+    CommunicationsControlBlock, ConnectorTable, DeviceControlBlock, GpioAssignmentTable,
+    I2cDevicesTable,
 };
 use crate::nvidia::nbsi::NbsiPciExpansionRom;
 use crate::nvidia::{NvgiRegion, NvidiaPciExpansionRom, RfrdRegion};
@@ -53,6 +54,7 @@ pub struct LegacyPciImageInfo {
     pub gpio_assignment_table: Option<GpioAssignmentTable>,
     pub i2c_devices_table: Option<I2cDevicesTable>,
     pub connector_table: Option<ConnectorTable>,
+    pub communications_control_block: Option<CommunicationsControlBlock>,
 }
 
 impl FirmwareBundleInfo {
@@ -77,6 +79,7 @@ impl FirmwareBundleInfo {
                         gpio_assignment_table: None,
                         i2c_devices_table: None,
                         connector_table: None,
+                        communications_control_block: None,
                         power_policy_table: None,
                         virtual_p_state_table: None,
                     });
@@ -235,6 +238,16 @@ impl FirmwareBundleInfo {
                             let connector_table =
                                 legacy_image_reader.read_le::<ConnectorTable>()?;
                             info.connector_table.replace(connector_table);
+                        }
+
+                        if dcb.header.communications_control_block_pointer > 0 {
+                            legacy_image_reader.seek(SeekFrom::Start(
+                                dcb.header.communications_control_block_pointer as u64,
+                            ))?;
+                            let communications_control_block =
+                                legacy_image_reader.read_le::<CommunicationsControlBlock>()?;
+                            info.communications_control_block
+                                .replace(communications_control_block);
                         }
 
                         info.device_control_block.replace(dcb);
