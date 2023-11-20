@@ -1,5 +1,7 @@
 use super::PerfPtrsToken;
 use binread::BinRead;
+use modular_bitfield::bitfield;
+use modular_bitfield::prelude::*;
 use serde::Serialize;
 use std::io::SeekFrom;
 
@@ -192,4 +194,157 @@ pub struct VirtualPStateTableDomainEntry20 {
     pub flags_2: [bool; 2],
     #[br(map(|v: u16| (v << 2) as u32))]
     pub frequency_2: u32,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+#[br(import(ptrs: PerfPtrsToken))]
+pub struct MemoryTweakTable {
+    #[br(seek_before = SeekFrom::Start(ptrs.memory_tweak_table_ptr as u64))]
+    pub header: MemoryTweakTableHeader,
+    #[br(count(header.entry_count))]
+    #[br(args(header.extended_entry_count))]
+    pub entries: Vec<MemoryTweakTableEntry>,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct MemoryTweakTableHeader {
+    #[br(assert(version == 0x20))]
+    pub version: u8,
+    #[br(assert(header_size == 6))]
+    pub header_size: u8,
+    #[br(assert(base_entry_size == 76))]
+    pub base_entry_size: u8,
+    #[br(assert(extended_entry_size == 12))]
+    pub extended_entry_size: u8,
+    pub extended_entry_count: u8,
+    pub entry_count: u8,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+#[br(import(extended_entry_count: u8))]
+pub struct MemoryTweakTableEntry {
+    pub base_entry: MemoryTweakTableBaseEntry,
+    #[br(count(extended_entry_count))]
+    pub extended_entries: Vec<MemoryTweakTableExtendedEntry>,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct MemoryTweakTableBaseEntry {
+    pub config_0: MemoryTweakTableBaseEntryConfig0,
+    pub config_1: MemoryTweakTableBaseEntryConfig1,
+    pub config_2: MemoryTweakTableBaseEntryConfig2,
+    pub config_3: MemoryTweakTableBaseEntryConfig3,
+    pub config_4: MemoryTweakTableBaseEntryConfig4,
+    pub config_5: MemoryTweakTableBaseEntryConfig5,
+
+    pub reserved_0: [u8; 23],
+
+    pub voltage_config: MemoryTweakTableBaseEntryVoltageConfig, // 9 bytes
+    pub timing_config: MemoryTweakTableBaseEntryTiming22,
+
+    pub reserved_1: [u8; 16],
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig0 {
+    pub rc: u8,
+    pub rfc: B9,
+    pub ras: B7,
+    pub rp: B7,
+    pub reserved_0: B1,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig1 {
+    pub cl: B7,
+    pub wl: B7,
+    pub rd_rcd: B6,
+    pub wr_rcd: B6,
+    pub reserved_1: B6,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig2 {
+    pub rpre: B4,
+    pub wpre: B4,
+    pub cdlr: B7,
+    pub reserved_3: B1,
+    pub wr: B7,
+    pub reserved_4: B1,
+    pub w2r_bus: B4,
+    pub r2w_bus: B4,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig3 {
+    pub pdex: B5,
+    pub pden2pdex: B4,
+    pub faw: u8,
+    pub aond: B7,
+    pub ccdl: B4,
+    pub ccds: B4,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig4 {
+    pub refresh_lo: B3,
+    pub refresh: B12,
+    pub rrd: B6,
+    pub delay_0: B6,
+    pub reserved_5: B5,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryConfig5 {
+    pub adr_min: B3,
+    pub reserved_6: B1,
+    pub wrcrc: B7,
+    pub reserved_7: B1,
+    pub offset_0: B6,
+    pub delay_0_msb: B2,
+    pub offset_1: B4,
+    pub offset_2: B4,
+    pub delay_0_1: B4,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryVoltageConfig {
+    pub drive_strength: B2,
+    pub voltage_0: B3,
+    pub voltage_1: B3,
+
+    pub voltage_2: B3,
+    pub r2p: B5,
+
+    pub voltage_3: B3,
+    pub reserved_0: B1,
+    pub voltage_4: B3,
+    pub reserved_1: B1,
+
+    pub voltage_5: B3,
+    pub reserved_2: B5,
+
+    pub rdcrc: B4,
+    pub reserved_3: B36,
+}
+
+#[bitfield]
+#[derive(BinRead, Debug, Clone, Serialize, BitfieldSpecifier)]
+pub struct MemoryTweakTableBaseEntryTiming22 {
+    pub rfcsba: B10,
+    pub rfcsbr: B8,
+    pub reserved: B14,
+}
+
+#[derive(BinRead, Debug, Clone, Serialize)]
+pub struct MemoryTweakTableExtendedEntry {
+    #[br(count(12))]
+    pub unknown: Vec<u8>,
 }

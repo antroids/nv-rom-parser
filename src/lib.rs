@@ -352,6 +352,26 @@ mod tests {
     }
 
     #[test]
+    fn test_3060ti_memory_tweak() {
+        TestLogger::init(LevelFilter::Debug, Config::default()).unwrap();
+        let mut rom_file = get_rom_file(
+            "https://www.techpowerup.com/vgabios/236055/MSI.RTX3060Ti.8192.201112.rom",
+        );
+        let firmware_bundle = FirmwareBundleInfo::parse(&mut rom_file).unwrap();
+        if let Some(memory_tweak_table) = firmware_bundle
+            .firmwares
+            .first()
+            .and_then(|f| f.legacy_pci_image.as_ref())
+            .and_then(|i| i.memory_tweak_table.as_ref())
+        {
+            //println!("Memory tweak table: {:?}", &memory_tweak_table);
+            for entry in &memory_tweak_table.entries {
+                println!("Entry: {:?}", entry)
+            }
+        }
+    }
+
+    #[test]
     fn test_4090() {
         TestLogger::init(LevelFilter::Debug, Config::default()).unwrap();
         let mut rom_file = get_rom_file(

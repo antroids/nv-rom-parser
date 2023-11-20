@@ -2,7 +2,9 @@
 
 use crate::cursor::ContinuousRegionReader;
 use crate::nvidia::bit::nvlink::NvLinkConfigData;
-use crate::nvidia::bit::perf::{MemoryClockTable, PowerPolicyTable, VirtualPStateTable20};
+use crate::nvidia::bit::perf::{
+    MemoryClockTable, MemoryTweakTable, PowerPolicyTable, VirtualPStateTable20,
+};
 use crate::nvidia::bit::{BITStructure, BITTokenType, PllInfo, StringToken};
 use crate::nvidia::dcb::{
     CommunicationsControlBlock, ConnectorTable, DeviceControlBlock, GpioAssignmentTable,
@@ -45,6 +47,7 @@ pub struct LegacyPciImageInfo {
     pub bit_string_token: Option<StringToken>,
     pub nvlink_config_data: Option<NvLinkConfigData>,
     pub memory_clock_table: Option<MemoryClockTable>,
+    pub memory_tweak_table: Option<MemoryTweakTable>,
     pub pll_info: Option<PllInfo>,
     pub power_policy_table: Option<PowerPolicyTable>,
     pub virtual_p_state_table: Option<VirtualPStateTable20>,
@@ -73,6 +76,7 @@ impl FirmwareBundleInfo {
                         bit_tokens_data: vec![],
                         bit_string_token: None,
                         nvlink_config_data: None,
+                        memory_tweak_table: None,
                         memory_clock_table: None,
                         pll_info: None,
                         device_control_block: None,
@@ -187,19 +191,37 @@ impl FirmwareBundleInfo {
                                     info.pll_info.replace(pll_token);
                                 }
                                 Ok(BITTokenType::Perf(ptrs)) => {
-                                    let memory_clock_table = legacy_image_reader
-                                        .read_le_args::<MemoryClockTable>((ptrs.clone(),))?;
-                                    info.memory_clock_table.replace(memory_clock_table);
+                                    if ptrs.memory_clock_table_ptr > 0 {
+                                        let memory_clock_table = legacy_image_reader
+                                            .read_le_args::<MemoryClockTable>(
+                                            (ptrs.clone(),),
+                                        )?;
+                                        info.memory_clock_table.replace(memory_clock_table);
+                                    }
 
-                                    let virtual_p_state_table = legacy_image_reader
-                                        .read_le_args::<VirtualPStateTable20>(
-                                        (ptrs.clone(),),
-                                    )?;
-                                    info.virtual_p_state_table.replace(virtual_p_state_table);
+                                    if ptrs.memory_tweak_table_ptr > 0 {
+                                        let memory_tweak_table = legacy_image_reader
+                                            .read_le_args::<MemoryTweakTable>(
+                                            (ptrs.clone(),),
+                                        )?;
+                                        info.memory_tweak_table.replace(memory_tweak_table);
+                                    }
 
-                                    let power_policy_table = legacy_image_reader
-                                        .read_le_args::<PowerPolicyTable>((ptrs.clone(),))?;
-                                    info.power_policy_table.replace(power_policy_table);
+                                    if ptrs.virtual_p_state_table_ptr > 0 {
+                                        let virtual_p_state_table = legacy_image_reader
+                                            .read_le_args::<VirtualPStateTable20>(
+                                            (ptrs.clone(),),
+                                        )?;
+                                        info.virtual_p_state_table.replace(virtual_p_state_table);
+                                    }
+
+                                    if ptrs.power_policy_table_ptr > 0 {
+                                        let power_policy_table = legacy_image_reader
+                                            .read_le_args::<PowerPolicyTable>(
+                                            (ptrs.clone(),),
+                                        )?;
+                                        info.power_policy_table.replace(power_policy_table);
+                                    }
                                 }
                                 Err(err) => {
                                     warn!("Failed to read token {:?}, error: {:?}", token, err);
